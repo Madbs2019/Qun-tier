@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>群排行榜</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Segoe UI", Roboto, system-ui, sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  background: #0d0d14;
+  background-image:
+    radial-gradient(circle at 0% 0%, rgba(66, 165, 245, 0.08), transparent 35%),
+    radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.06), transparent 35%);
+  color: #f3f4f6;
+  padding: 16px 12px;
+}
+
+.app {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  background: linear-gradient(90deg, #ffd700, #fff176, #ffd700);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 24px rgba(255, 215, 0, 0.25);
+}
+
+.container {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.table-header {
+  display: grid;
+  /* 5列自适应，手机自动压缩，电脑均分 */
+  grid-template-columns: 50px 1fr 60px 110px 65px;
+  gap: 8px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  font-weight: 600;
+  font-size: 14px;
+  color: #9ca3af;
+  align-items: center;
+}
+
+.rank-list {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.rank-item {
+  display: grid;
+  grid-template-columns: 50px 1fr 60px 110px 65px;
+  gap: 8px;
+  padding: 12px 14px;
+  font-size: 14px;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.24s cubic-bezier(0.25, 1, 0.5, 1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.rank-item:last-child {
+  border-bottom: none;
+}
+
+.rank-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.rank-item.rank-1 {
+  background: linear-gradient(90deg, rgba(255,215,0,0.13), rgba(255,215,0,0.03));
+  border-left: 4px solid #ffd700;
+}
+.rank-item.rank-2 {
+  background: linear-gradient(90deg, rgba(192,192,192,0.13), rgba(192,192,192,0.03));
+  border-left: 4px solid #c0c0c0;
+}
+.rank-item.rank-3 {
+  background: linear-gradient(90deg, rgba(205,155,103,0.13), rgba(205,155,103,0.03));
+  border-left: 4px solid #cd9b67;
+}
+
+.rank-num {
+  font-weight: 700;
+  color: #9ca3af;
+}
+.rank-1 .rank-num { color: #ffd700; }
+.rank-2 .rank-num { color: #e5e7eb; }
+.rank-3 .rank-num { color: #cd9b67; }
+
+.name {
+  font-weight: 500;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.score-col {
+  text-align: right;
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+.title-col {
+  text-align: right;
+  font-weight: 600;
+}
+
+.tag-col {
+  text-align: right;
+  font-weight: 600;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  visibility: hidden;
+  transition: 0.3s ease;
+  z-index: 99;
+}
+.overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.detail-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.92);
+  width: min(380px, 92vw);
+  background: #1a1a24;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  padding: 22px;
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.32s cubic-bezier(0.25,1,0.5,1);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+.detail-modal.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.modal-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+.close-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.close-btn:hover {
+  background: rgba(255,255,255,0.14);
+  transform: rotate(90deg);
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.detail-row:last-child {
+  border-bottom: none;
+}
+.label {
+  color: #9ca3af;
+}
+.value {
+  font-weight: 600;
+}
+
+.tier-badge {
+  margin-top: 20px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  display: inline-block;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.rank-list::-webkit-scrollbar {
+  width: 6px;
+}
+.rank-list::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.03);
+}
+.rank-list::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.16);
+  border-radius: 3px;
+}
+
+/* 小手机进一步压缩，保证5列全部可见 */
+@media (max-width: 420px) {
+  .table-header, .rank-item {
+    grid-template-columns: 42px 1fr 50px 95px 55px;
+    gap: 4px;
+    padding: 10px 10px;
+    font-size: 12px;
+  }
+  header h1 {
+    font-size: 24px;
+  }
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+  <header>
+    <h1>群排行榜</h1>
+  </header>
+
+  <div class="container">
+    <div class="table-header">
+      <div>排名</div>
+      <div>玩家</div>
+      <div>积分</div>
+      <div>头衔</div>
+      <div>标签</div>
+    </div>
+    <div class="rank-list" id="rankList"></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="detail-modal" id="modal">
+  <div class="modal-header">
+    <div class="modal-title" id="modalName"></div>
+    <button class="close-btn" id="closeBtn">×</button>
+  </div>
+  <div id="modalContent"></div>
+</div>
+
+<script>
+const players = [
+  { rank: 1, name: "花子くん", score: 85, tag: "HT1", icon: "👑" },
+  { rank: 2, name: ".", score: 4, tag: "LT1", icon: "🔱" },
+  { rank: 3, name: "矿工", score: 2, tag: "HT3", icon: "♠" },
+  { rank: 4, name: "逆蝶", score: 2, tag: "LT3", icon: "" },
+  { rank: 5, name: "陈平安", score: 0, tag: "HT4", icon: "" },
+  { rank: 6, name: "鱼寻宝", score: 0, tag: "HT4", icon: "" },
+  { rank: 7, name: "锁匠", score: 0, tag: "LT5", icon: "" },
+  { rank: 8, name: "隐匿", score: 0, tag: "LT5", icon: "" },
+  { rank: 9, name: "", score: 0, tag: "LT5", icon: "" },
+  { rank: 10, name: "隐匿浮梦", score: 0, tag: "LT5", icon: "" },
+  { rank: 11, name: "小称", score: 0, tag: "HT6", icon: "" },
+  { rank: 12, name: "。", score: 0, tag: "LT6", icon: "" }
+];
+
+// 根据排名强制指定头衔
+function getTitleByRank(rank, score) {
+  if(rank === 1) return "Combat Master";
+  if(rank === 2) return "Combat Ace";
+  if(rank === 3 || rank === 4) return "Combat Novice";
+  // 其余使用积分判断
+  if (score >= 100) return "Combatgrand Master";
+  if (score >= 80) return "Combat Master";
+  if (score >= 50) return "Combat Ace";
+  if (score >= 20) return "Combat Specialist";
+  if (score >= 10) return "Combat Cadet";
+  if (score >= 5) return "Combat Novice";
+  return "Noob";
+}
+
+// 获取头衔颜色：排名优先，再积分
+function getTitleColor(rank, score) {
+  if(rank === 2) return "#dc143c"; // Combat Ace 红色
+  if(rank === 3 || rank === 4) return "#ba55d3"; // Combat Novice 淡紫色
+  if (score >= 100) return "#ffd700";
+  if (score >= 80) return "#ffed4e";
+  if (score >= 50) return "#42a5f5";
+  if (score >= 20) return "#90caf9";
+  if (score >= 10) return "#a78bfa";
+  if (score >= 5) return "#f97316";
+  return "#9ca3af"; // Noob灰色
+}
+
+// 段位标签HT/LT颜色（tag字段决定）
+function getTagColor(tag) {
+  switch(tag){
+    case "HT1": return "#ffd700";   //金
+    case "HT2": return "#c0c0c0";   //银
+    case "HT3": return "#cd9b67";   //铜
+    case "HT4": return "#a0a0a0";   //浅灰
+    case "LT1": return "#1976d2";   //深蓝
+    case "LT2": return "#42a5f5";   //蓝
+    case "LT3": return "#90caf9";   //浅蓝
+    case "LT4": return "#78909c";   //灰蓝
+    case "LT5": return "#9ca3af";   //灰色
+    default: return "#9ca3af";
+  }
+}
+
+const rankListEl = document.getElementById("rankList");
+const modal = document.getElementById("modal");
+const overlay = document.getElementById("overlay");
+const closeBtn = document.getElementById("closeBtn");
+const modalName = document.getElementById("modalName");
+const modalContent = document.getElementById("modalContent");
+
+function renderList() {
+  rankListEl.innerHTML = "";
+  players.forEach(p => {
+    const item = document.createElement("div");
+    let cls = "rank-item";
+    if(p.rank === 1) cls += " rank-1";
+    if(p.rank === 2) cls += " rank-2";
+    if(p.rank === 3) cls += " rank-3";
+    item.className = cls;
+
+    const title = getTitleByRank(p.rank, p.score);
+    const titleColor = getTitleColor(p.rank, p.score);
+    const tagColor = getTagColor(p.tag);
+
+    item.innerHTML = `
+      <div class="rank-num">${p.icon || p.rank}</div>
+      <div class="name">${p.name || "未命名"}</div>
+      <div class="score-col">${p.score}</div>
+      <div class="title-col" style="color:${titleColor}">${title}</div>
+      <div class="tag-col" style="color:${tagColor}">${p.tag}</div>
+    `;
+
+    item.onclick = () => openModal(p);
+    rankListEl.appendChild(item);
+  });
+}
+
+function openModal(player) {
+  modalName.textContent = player.name || "未命名";
+  const title = getTitleByRank(player.rank, player.score);
+  const titleColor = getTitleColor(player.rank, player.score);
+  const tagColor = getTagColor(player.tag);
+  modalContent.innerHTML = `
+    <div class="detail-row">
+      <span class="label">排名</span>
+      <span class="value" style="color:${titleColor}">#${player.rank} ${player.icon||""}</span>
+    </div>
+    <div class="detail-row">
+      <span class="label">积分</span>
+      <span class="value" style="color:#60a5fa">${player.score}</span>
+    </div>
+    <div class="detail-row">
+      <span class="label">头衔</span>
+      <span class="value" style="color:${titleColor}">${title}</span>
+    </div>
+    <div class="detail-row">
+      <span class="label">段位标签</span>
+      <span class="value" style="color:${tagColor}">${player.tag}</span>
+    </div>
+    <div class="tier-badge" style="color:${titleColor};background-color:${titleColor}22">
+      ${title}
+    </div>
+  `;
+  modal.classList.add("open");
+  overlay.classList.add("show");
+}
+
+function closeModal() {
+  modal.classList.remove("open");
+  overlay.classList.remove("show");
+}
+
+closeBtn.addEventListener("click", closeModal);
+overlay.addEventListener("click", closeModal);
+
+renderList();
+</script>
+</body>
+</html>
